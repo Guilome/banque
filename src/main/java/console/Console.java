@@ -3,18 +3,22 @@ package console;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Scanner;
 import java.util.stream.Stream;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
+import javax.persistence.TypedQuery;
+
 import model.Adresse;
 import model.AssuranceVie;
 import model.Banque;
 import model.Client;
 import model.Compte;
 import model.LivretA;
+import model.Operation;
 import model.Virement;
 
 /**
@@ -28,7 +32,7 @@ public class Console {
 	 */
 	public static void main(String[] args) {
 		EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("banque");
-		EntityManager em = entityManagerFactory.createEntityManager(); 
+		EntityManager em = entityManagerFactory.createEntityManager();
 		EntityTransaction et = em.getTransaction();
 
 		et.begin();
@@ -49,7 +53,7 @@ public class Console {
 		// Ajout de compte
 		LivretA livretA = new LivretA(519615, 999999.99, 10.50);
 		AssuranceVie assuranceVie = new AssuranceVie(519600, 0.99, LocalDate.of(3000, 12, 12), 0.2);
-		LivretA livretA2 = new LivretA(519615, 5000.55, 2.00);
+		LivretA livretA2 = new LivretA(519614, 5000.55, 2.00);
 
 		// Ajout d'Operation
 		Virement virement = new Virement(LocalDateTime.of(2010, 10, 10, 10, 10, 10), 30.00, "Arrrrrgent",
@@ -65,6 +69,10 @@ public class Console {
 		assuranceVie.getOperations().add(virement2);
 		livretA2.getOperations().add(virement);
 		livretA2.getOperations().add(virement2);
+		virement.setCompte(livretA);
+		virement2.setCompte(assuranceVie);
+		virement.setCompte(livretA2);
+		virement2.setCompte(livretA2);
 
 		em.persist(banque);
 		em.persist(banque2);
@@ -78,6 +86,75 @@ public class Console {
 		em.persist(virement2);
 
 		et.commit();
+
+		System.out.println(
+				"____________________________________________________________________________________________________");
+		System.out.println("Affichage des comptes d'un client");
+		Client client4 = null;
+		TypedQuery<Client> clientQuery = em.createQuery("select c from Client c where c.id=:clientID", Client.class);
+		clientQuery.setParameter("clientID", client3.getId());
+
+		if (clientQuery.getMaxResults() > 1) {
+			client4 = clientQuery.getResultList().get(0);
+		}
+		client4 = clientQuery.getSingleResult();
+
+		List<Compte> lesComptes = client4.getComptes();
+
+		for (Compte compte : lesComptes) {
+			System.out.println(compte.getNumero());
+		}
+
+		System.out.println(
+				"____________________________________________________________________________________________________");
+		System.out.println("Affichage des comptes d'une banque");
+		Compte compte = null;
+
+		TypedQuery<Compte> compteQuery = em.createQuery(
+				"select c from Compte c INNER JOIN c.clients cli where cli.banque.id=:BanqueID", Compte.class);
+
+		compteQuery.setParameter("BanqueID", banque.getId());
+
+		if (compteQuery.getMaxResults() > 1) {
+			List<Compte> comptes = compteQuery.getResultList();
+			for (Compte compte2 : comptes) {
+				System.out.println(compte2.getNumero());
+			}
+		} else {
+			compte = compteQuery.getSingleResult();
+			System.out.println(compte.getNumero());
+		}
+
+		System.out.println(
+				"____________________________________________________________________________________________________");
+		System.out.println("Affichage des comptes avec une opération de plus de 1000€");
+
+		TypedQuery<Compte> compteQuery2 = em.createQuery(
+				"select c from Compte c INNER JOIN c.operations op where op.montant>:montant", Compte.class);
+		compteQuery2.setParameter("montant", 1000.00);
+
+		if (compteQuery2.getMaxResults() > 1) {
+			for (Compte compte3 : compteQuery2.getResultList()) {
+				System.out.println(compte3.getNumero());
+			}
+		} else {
+			System.out.println(compteQuery2.getSingleResult());
+		}
+
+		System.out.println(
+				"____________________________________________________________________________________________________");
+		System.out.println("Affichage des comptes avec au moins 1 opération");
+
+		TypedQuery<Compte> compteQuery3 = em.createQuery(
+				"select c from Compte c where exists(Select o from Operation o where o.compte = c )", Compte.class);
+
+		if (compteQuery3.getMaxResults() > 1) {
+			for (Compte compte4 : compteQuery3.getResultList()) {
+				System.out.println(compte4.getNumero());
+			}
+		} else {
+			System.out.println(compteQuery3.getSingleResult());
+		}
 		
 		em.close();
 		entityManagerFactory.close();
