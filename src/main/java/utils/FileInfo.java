@@ -1,0 +1,31 @@
+package utils;
+
+import java.util.Arrays;
+import java.util.List;
+import org.slf4j.event.Level;
+import org.slf4j.event.LoggingEvent;
+import ch.qos.logback.core.spi.FilterReply;
+
+/**
+ * @author GOBERT Guillaume
+ *
+ */
+public class FileInfo extends ch.qos.logback.core.filter.AbstractMatcherFilter {
+
+	@Override
+	public FilterReply decide(Object event) {
+		if (!isStarted()) {
+			return FilterReply.NEUTRAL;
+		}
+
+		LoggingEvent loggingEvent = (LoggingEvent) event;
+
+		List<Level> eventsToKeep = Arrays.asList(Level.TRACE, Level.DEBUG, Level.INFO);
+		if (eventsToKeep.contains(loggingEvent.getLevel())) {
+			return FilterReply.NEUTRAL;
+		} else {
+			return FilterReply.DENY;
+		}
+	}
+
+}
